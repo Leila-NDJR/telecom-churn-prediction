@@ -1,0 +1,28 @@
+{
+    "original_shape": [
+        7043,
+        21
+    ],
+    "cleaned_shape": [
+        7032,
+        38
+    ],
+    "n_features": 37,
+    "train_size": 5625,
+    "test_size": 1407,
+    "churn_rate_original": 0.26578498293515357,
+    "churn_rate_train": 0.2657777777777778,
+    "churn_rate_test": 0.2658137882018479,
+    "features_created": [
+        "AvgMonthlyCharges",
+        "TenureCategory",
+        "TotalServices",
+        "ChargesPerService",
+        "SeniorWithFamily"
+    ],
+    "balancing_strategy": "class_weight_balanced",
+    "class_weights": {
+        "0": 0.6809927360774818,
+        "1": 1.8812709030100334
+    }
+}

@@ -1,0 +1,147 @@
+{
+    "best_model": "XGBoost",
+    "best_threshold": 0.5,
+    "feature_names": [
+        "gender",
+        "SeniorCitizen",
+        "Partner",
+        "Dependents",
+        "tenure",
+        "PhoneService",
+        "PaperlessBilling",
+        "MonthlyCharges",
+        "TotalCharges",
+        "AvgMonthlyCharges",
+        "TotalServices",
+        "ChargesPerService",
+        "SeniorWithFamily",
+        "MultipleLines_No phone service",
+        "MultipleLines_Yes",
+        "InternetService_Fiber optic",
+        "InternetService_No",
+        "OnlineSecurity_No internet service",
+        "OnlineSecurity_Yes",
+        "OnlineBackup_No internet service",
+        "OnlineBackup_Yes",
+        "DeviceProtection_No internet service",
+        "DeviceProtection_Yes",
+        "TechSupport_No internet service",
+        "TechSupport_Yes",
+        "StreamingTV_No internet service",
+        "StreamingTV_Yes",
+        "StreamingMovies_No internet service",
+        "StreamingMovies_Yes",
+        "Contract_One year",
+        "Contract_Two year",
+        "PaymentMethod_Credit card (automatic)",
+        "PaymentMethod_Electronic check",
+        "PaymentMethod_Mailed check",
+        "TenureCategory_1-2 ans",
+        "TenureCategory_2-4 ans",
+        "TenureCategory_4+ ans"
+    ],
+    "feature_importance": {
+        "Feature": {
+            "30": "Contract_Two year",
+            "15": "InternetService_Fiber optic",
+            "36": "TenureCategory_4+ ans",
+            "17": "OnlineSecurity_No internet service",
+            "29": "Contract_One year",
+            "23": "TechSupport_No internet service",
+            "16": "InternetService_No",
+            "19": "OnlineBackup_No internet service",
+            "4": "tenure",
+            "32": "PaymentMethod_Electronic check",
+            "21": "DeviceProtection_No internet service",
+            "28": "StreamingMovies_Yes",
+            "8": "TotalCharges",
+            "18": "OnlineSecurity_Yes",
+            "27": "StreamingMovies_No internet service",
+            "5": "PhoneService",
+            "7": "MonthlyCharges",
+            "11": "ChargesPerService",
+            "24": "TechSupport_Yes",
+            "10": "TotalServices"
+        },
+        "Importance": {
+            "30": 0.14224034547805786,
+            "15": 0.09248507022857666,
+            "36": 0.06317140907049179,
+            "17": 0.06312032788991928,
+            "29": 0.06257426738739014,
+            "23": 0.06212892010807991,
+            "16": 0.05117408186197281,
+            "19": 0.0510026216506958,
+            "4": 0.04878269508481026,
+            "32": 0.04638462886214256,
+            "21": 0.03694542497396469,
+            "28": 0.01946185901761055,
+            "8": 0.01807410642504692,
+            "18": 0.017995184287428856,
+            "27": 0.017824744805693626,
+            "5": 0.01459326408803463,
+            "7": 0.01412167213857174,
+            "11": 0.01396085973829031,
+            "24": 0.013282597996294498,
+            "10": 0.012944291345775127
+        }
+    },
+    "performance": {
+        "accuracy": 0.7412935323383084,
+        "recall": 0.8074866310160428,
+        "precision": 0.5084175084175084,
+        "f1_score": 0.6239669421487604,
+        "auc_roc": 0.8419405604360902,
+        "overfitting": 0.028128689883913816
+    },
+    "comparison": {
+        "Mod\u00e8le": {
+            "0": "Logistic Reg",
+            "1": "Random Forest",
+            "2": "XGBoost",
+            "3": "LightGBM"
+        },
+        "Accuracy": {
+            "0": 0.7256574271499645,
+            "1": 0.7690120824449183,
+            "2": 0.7412935323383084,
+            "3": 0.7434257285003554
+        },
+        "Recall": {
+            "0": 0.7914438502673797,
+            "1": 0.7379679144385026,
+            "2": 0.8074866310160428,
+            "3": 0.7967914438502673
+        },
+        "Precision": {
+            "0": 0.4900662251655629,
+            "1": 0.5487077534791253,
+            "2": 0.5084175084175084,
+            "3": 0.5111492281303602
+        },
+        "F1-Score": {
+            "0": 0.6053169734151329,
+            "1": 0.629418472063854,
+            "2": 0.6239669421487604,
+            "3": 0.6227795193312434
+        },
+        "AUC-ROC": {
+            "0": 0.8331413617986136,
+            "1": 0.8346374455793054,
+            "2": 0.8419405604360902,
+            "3": 0.8346452107200356
+        },
+        "Overfitting": {
+            "0": 0.02989812840559103,
+            "1": 0.08627680644397062,
+            "2": 0.028128689883913816,
+            "3": 0.06386316038853346
+        },
+        "Objectifs": {
+            "0": false,
+            "1": false,
+            "2": false,
+            "3": false
+        }
+    }
+}

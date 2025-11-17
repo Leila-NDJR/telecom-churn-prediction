@@ -1,0 +1,32 @@
+# Data manipulation
+pandas
+numpy
+
+# Machine Learning
+scikit-learn
+xgboost
+imbalanced-learn
+
+# Visualization
+matplotlib
+seaborn
+plotly
+
+# API
+fastapi
+uvicorn
+pydantic
+
+# MQTT
+paho-mqtt
+
+# Dashboard
+streamlit
+
+# Utilities
+python-dotenv
+joblib
+
+# Jupyter
+jupyter 
+ipykernel

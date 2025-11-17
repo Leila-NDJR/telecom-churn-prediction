@@ -1,0 +1,194 @@
+{
+    "comparison": {
+        "Mod\u00e8le": {
+            "0": "Logistic Regression",
+            "1": "Random Forest",
+            "2": "XGBoost",
+            "3": "LightGBM"
+        },
+        "Accuracy": {
+            "0": 0.7256574271499645,
+            "1": 0.7825159914712153,
+            "2": 0.7590618336886994,
+            "3": 0.7448471926083866
+        },
+        "Precision": {
+            "0": 0.4900662251655629,
+            "1": 0.5801886792452831,
+            "2": 0.5349301397205589,
+            "3": 0.5134168157423972
+        },
+        "Recall": {
+            "0": 0.7914438502673797,
+            "1": 0.6577540106951871,
+            "2": 0.7165775401069518,
+            "3": 0.767379679144385
+        },
+        "F1-Score": {
+            "0": 0.6053169734151329,
+            "1": 0.6165413533834586,
+            "2": 0.6125714285714285,
+            "3": 0.6152197213290461
+        },
+        "AUC-ROC": {
+            "0": 0.8331413617986136,
+            "1": 0.8309037070781845,
+            "2": 0.8244495809412387,
+            "3": 0.8306539283846955
+        },
+        "Overfitting": {
+            "0": 0.02989812840559103,
+            "1": 0.1472617863065625,
+            "2": 0.1420937218668562,
+            "3": 0.11204169628050231
+        },
+        "Temps (s)": {
+            "0": 0.12851476669311523,
+            "1": 0.2859330177307129,
+            "2": 0.036650896072387695,
+            "3": 0.07677865028381348
+        },
+        "Objectifs": {
+            "0": false,
+            "1": false,
+            "2": false,
+            "3": false
+        }
+    },
+    "best_model_name": "XGBoost",
+    "feature_importance": {
+        "Feature": {
+            "30": "Contract_Two year",
+            "15": "InternetService_Fiber optic",
+            "29": "Contract_One year",
+            "16": "InternetService_No",
+            "17": "OnlineSecurity_No internet service",
+            "36": "TenureCategory_4+ ans",
+            "28": "StreamingMovies_Yes",
+            "19": "OnlineBackup_No internet service",
+            "32": "PaymentMethod_Electronic check",
+            "4": "tenure",
+            "5": "PhoneService",
+            "13": "MultipleLines_No phone service",
+            "8": "TotalCharges",
+            "18": "OnlineSecurity_Yes",
+            "26": "StreamingTV_Yes",
+            "9": "AvgMonthlyCharges",
+            "7": "MonthlyCharges",
+            "20": "OnlineBackup_Yes",
+            "24": "TechSupport_Yes",
+            "14": "MultipleLines_Yes",
+            "11": "ChargesPerService",
+            "6": "PaperlessBilling",
+            "10": "TotalServices",
+            "1": "SeniorCitizen",
+            "3": "Dependents",
+            "33": "PaymentMethod_Mailed check",
+            "0": "gender",
+            "34": "TenureCategory_1-2 ans",
+            "22": "DeviceProtection_Yes",
+            "2": "Partner",
+            "35": "TenureCategory_2-4 ans",
+            "31": "PaymentMethod_Credit card (automatic)",
+            "12": "SeniorWithFamily",
+            "27": "StreamingMovies_No internet service",
+            "25": "StreamingTV_No internet service",
+            "21": "DeviceProtection_No internet service",
+            "23": "TechSupport_No internet service"
+        },
+        "Importance": {
+            "30": 0.30614957213401794,
+            "15": 0.2445726841688156,
+            "29": 0.08521300554275513,
+            "16": 0.04228699952363968,
+            "17": 0.04162293300032616,
+            "36": 0.020976072177290916,
+            "28": 0.020783863961696625,
+            "19": 0.014085659757256508,
+            "32": 0.01380316074937582,
+            "4": 0.013446995057165623,
+            "5": 0.01279080007225275,
+            "13": 0.012644607573747635,
+            "8": 0.011054202914237976,
+            "18": 0.01092893909662962,
+            "26": 0.010388066992163658,
+            "9": 0.00914350338280201,
+            "7": 0.00902156624943018,
+            "20": 0.008795198053121567,
+            "24": 0.00868700910359621,
+            "14": 0.008624386973679066,
+            "11": 0.008450296707451344,
+            "6": 0.008402257226407528,
+            "10": 0.008239829912781715,
+            "1": 0.008050628937780857,
+            "3": 0.007993142120540142,
+            "33": 0.00748697854578495,
+            "0": 0.007484677713364363,
+            "34": 0.0067038931883871555,
+            "22": 0.006684018298983574,
+            "2": 0.006550784222781658,
+            "35": 0.006539159920066595,
+            "31": 0.006429778877645731,
+            "12": 0.005965294782072306,
+            "27": 0.0,
+            "25": 0.0,
+            "21": 0.0,
+            "23": 0.0
+        }
+    },
+    "objectives": {
+        "accuracy_target": 0.85,
+        "recall_target": 0.8,
+        "models_meeting_objectives": []
+    },
+    "metrics": {
+        "logistic_regression": {
+            "model_name": "Logistic Regression",
+            "train_accuracy": 0.7555555555555555,
+            "test_accuracy": 0.7256574271499645,
+            "precision": 0.4900662251655629,
+            "recall": 0.7914438502673797,
+            "f1_score": 0.6053169734151329,
+            "auc_roc": 0.8331413617986136,
+            "overfitting": 0.02989812840559103,
+            "prediction_time": 0.12851476669311523,
+            "objectives_met": false
+        },
+        "random_forest": {
+            "model_name": "Random Forest",
+            "train_accuracy": 0.9297777777777778,
+            "test_accuracy": 0.7825159914712153,
+            "precision": 0.5801886792452831,
+            "recall": 0.6577540106951871,
+            "f1_score": 0.6165413533834586,
+            "auc_roc": 0.8309037070781845,
+            "overfitting": 0.1472617863065625,
+            "prediction_time": 0.2859330177307129,
+            "objectives_met": false
+        },
+        "xgboost": {
+            "model_name": "XGBoost",
+            "train_accuracy": 0.9011555555555556,
+            "test_accuracy": 0.7590618336886994,
+            "precision": 0.5349301397205589,
+            "recall": 0.7165775401069518,
+            "f1_score": 0.6125714285714285,
+            "auc_roc": 0.8244495809412387,
+            "overfitting": 0.1420937218668562,
+            "prediction_time": 0.036650896072387695,
+            "objectives_met": false
+        },
+        "lightgbm": {
+            "model_name": "LightGBM",
+            "train_accuracy": 0.8568888888888889,
+            "test_accuracy": 0.7448471926083866,
+            "precision": 0.5134168157423972,
+            "recall": 0.767379679144385,
+            "f1_score": 0.6152197213290461,
+            "auc_roc": 0.8306539283846955,
+            "overfitting": 0.11204169628050231,
+            "prediction_time": 0.07677865028381348,
+            "objectives_met": false
+        }
+    }
+}
