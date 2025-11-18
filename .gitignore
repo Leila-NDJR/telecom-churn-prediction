@@ -17,7 +17,6 @@ ENV/
 *.pkl
 *.joblib
 *.h5
-*.csv
 data/raw/*.csv
 data/processed/*.csv
 
@@ -25,11 +24,10 @@ data/processed/*.csv
 .vscode/
 .idea/
 *.swp
-*.swo
 
 # OS
 .DS_Store
 Thumbs.db
 
 # Logs
-*.log 
+*.log
