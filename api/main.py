@@ -21,6 +21,63 @@ from datetime import datetime
 import os
 
 # ============================================================================
+# FONCTIONS DE FEATURE ENGINEERING
+# (Doivent reproduire le Notebook 02)
+# ============================================================================
+
+def create_custom_features(df):
+    """Crée les 5 features personnalisées (Feature Engineering) :
+    AvgMonthlyCharges, TotalServices, ChargesPerService, SeniorWithFamily, TenureCategory
+    """
+    
+    # 1. Feature: TotalServices (Nombre de services actifs)
+    service_features = [
+        'MultipleLines', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 
+        'TechSupport', 'StreamingTV', 'StreamingMovies'
+    ]
+    df['TotalServices'] = 0
+    # Compter tous les 'Yes'
+    for col in service_features:
+        df['TotalServices'] += (df[col] == 'Yes').astype(int)
+    # Ajouter PhoneService si 'Yes'
+    df['TotalServices'] += (df['PhoneService'] == 'Yes').astype(int)
+    # Ajouter InternetService si 'DSL' ou 'Fiber optic'
+    df['TotalServices'] += (df['InternetService'].isin(['DSL', 'Fiber optic'])).astype(int)
+
+
+    # 2. Feature: AvgMonthlyCharges (Charges mensuelles moyennes par mois d'ancienneté)
+    # Remplacer 0 par 1 pour éviter la division par zéro
+    df['AvgMonthlyCharges'] = df['TotalCharges'] / df['tenure'].replace(0, 1)
+    # Forcer 0 pour les clients avec tenure=0
+    df.loc[df['tenure'] == 0, 'AvgMonthlyCharges'] = 0.0
+
+    # 3. Feature: ChargesPerService (Charges mensuelles moyennes par service)
+    # Remplacer 0 par 1 pour éviter la division par zéro dans TotalServices
+    df['ChargesPerService'] = df['MonthlyCharges'] / df['TotalServices'].replace(0, 1)
+    # Forcer 0 pour les clients sans services
+    df.loc[df['TotalServices'] == 0, 'ChargesPerService'] = 0.0
+    
+    # 4. Feature: SeniorWithFamily (SeniorCitizen=1 AND (Partner=Yes OR Dependents=Yes))
+    df['SeniorWithFamily'] = (
+        (df['SeniorCitizen'] == 1) & (
+            (df['Partner'] == 'Yes') | (df['Dependents'] == 'Yes')
+        )
+    ).astype(int)
+    
+    # 5. Feature: TenureCategory (Classification de l'ancienneté pour OHE)
+    bins = [0, 12, 24, 48, 72]  # <1an, 1-2ans, 2-4ans, 4+ans
+    labels = ['< 1 an', '1-2 ans', '2-4 ans', '4+ ans']
+    df['TenureCategory'] = pd.cut(
+        df['tenure'], 
+        bins=bins, 
+        labels=labels, 
+        right=False, 
+        include_lowest=True
+    ).astype(str)
+
+    return df
+
+# ============================================================================
 # INITIALISATION
 # ============================================================================
 
@@ -72,13 +129,84 @@ except Exception as e:
     model = None
     metadata = {}
 
+
+# ============================================================================
+# FONCTIONS DE POST-TRAITEMENT ET RECOMMANDATIONS
+# (Nécessaires pour les prédictions et la logique métier)
+# ============================================================================
+
+def post_process(probability: float) -> tuple[str, str, float]:
+    """
+    Applique le seuil optimal pour la prédiction et détermine le niveau de risque.
+    
+    BEST_THRESHOLD est défini à 0.5 dans votre code initial.
+    """
+    
+    # 1. Prédiction binaire
+    prediction = "Churn" if probability >= BEST_THRESHOLD else "No Churn"
+    
+    # 2. Niveau de risque basé sur la probabilité
+    if prediction == "Churn":
+        if probability >= 0.75:
+            risk_level = "High"
+            confidence = probability
+        elif probability >= BEST_THRESHOLD:
+            risk_level = "Medium"
+            confidence = probability
+        else:
+            # Ne devrait pas arriver si prediction == "Churn"
+            risk_level = "Medium" 
+            confidence = probability
+    else:
+        # Client No Churn
+        risk_level = "Low"
+        confidence = 1.0 - probability # Confiance dans le 'No Churn'
+
+    # S'assurer que la confidence est positive
+    confidence = abs(confidence)
+    
+    return prediction, risk_level, confidence
+
+
+def get_recommendations(probability: float, customer_data: dict) -> list[str]:
+    """
+    Génère des recommandations personnalisées basées sur la probabilité et les features client.
+    """
+    recommendations = []
+    
+    # Recommandations spécifiques si risque élevé
+    if probability >= 0.75:
+        recommendations.append("Alerte: Client à très haut risque. Contact immédiat du service Rétention.")
+    elif probability >= BEST_THRESHOLD:
+        recommendations.append("Client à risque modéré. Lancer une campagne de rétention automatisée (email/SMS).")
+
+    # Recommandations basées sur les features (Exemples)
+    if customer_data.get('Contract') == 'Month-to-month' and probability >= BEST_THRESHOLD:
+        recommendations.append("Proposer une offre de contrat 1 an ou 2 ans avec réduction pour stabiliser.")
+    
+    if customer_data.get('InternetService') == 'Fiber optic' and customer_data.get('MonthlyCharges', 0) > 90 and probability >= BEST_THRESHOLD:
+        recommendations.append("Vérifier la satisfaction des services fibre et envisager un rabais ou un service premium gratuit.")
+        
+    if customer_data.get('TechSupport') == 'No' and probability >= 0.6:
+        recommendations.append("Offrir un mois de support technique gratuit pour améliorer l'expérience client.")
+
+    if not recommendations:
+        recommendations.append("Client stable. Suivi standard.")
+        
+    return recommendations
+
+# ============================================================================
+# FIN DES FONCTIONS SUPPLÉMENTAIRES
+# ============================================================================
+
 # ============================================================================
 # SCHÉMAS PYDANTIC (VALIDATION DES DONNÉES)
 # ============================================================================
 
 class CustomerData(BaseModel):
     """Données d'un client pour la prédiction"""
-    
+    customerID: Optional[str] = Field(None, description="Identifiant unique du client")
+
     # Informations démographiques
     gender: str = Field(..., description="Genre: Male ou Female")
     SeniorCitizen: int = Field(..., ge=0, le=1, description="Senior: 0 ou 1")
@@ -121,6 +249,7 @@ class CustomerData(BaseModel):
     model_config = {
         "json_schema_extra": {
             "example": {
+                "customerid": "ID001",
                 "gender": "Female",
                 "SeniorCitizen": 0,
                 "Partner": "Yes",
@@ -147,6 +276,8 @@ class CustomerData(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Réponse de prédiction"""
+    customerID: str = Field(..., description="Identifiant unique du client")
+    
     churn_probability: float = Field(..., description="Probabilité de churn (0-1)")
     churn_prediction: str = Field(..., description="Prédiction: Churn ou No Churn")
     risk_level: str = Field(..., description="Niveau de risque: Low, Medium, High")
@@ -249,49 +380,38 @@ def preprocess_customer(customer: CustomerData) -> pd.DataFrame:
     return df_scaled
 
 
-def get_recommendations(probability: float, customer_data: CustomerData) -> List[str]:
+# ============================================================================
+# FONCTION DE RECOMMANDATIONS (Correction de l'accès aux données)
+# ============================================================================
+
+def get_recommendations(probability: float, customer_data: dict) -> list[str]:
     """
-    Génère des recommandations basées sur la probabilité de churn
+    Génère des recommandations personnalisées basées sur la probabilité et les features client.
+    Note: Utilise .get('key') pour accéder aux éléments du dictionnaire customer_data.
     """
-    recs = []
+    recommendations = []
     
-    if probability > 0.7:
-        recs.append("🚨 PRIORITÉ ÉLEVÉE: Contacter immédiatement")
-        recs.append("💰 Proposer une offre de rétention personnalisée")
-        recs.append("🎁 Réduction de 20-30% pendant 6 mois")
-    elif probability > 0.5:
-        recs.append("⚠️ Risque modéré: Planifier un contact dans les 2 semaines")
-        recs.append("📞 Appel de satisfaction client")
-        recs.append("🎁 Offre de fidélité ou upgrade service")
-    else:
-        recs.append("✅ Risque faible: Maintenir la relation")
-        recs.append("📧 Campagne d'engagement standard")
+    # Recommandations spécifiques si risque élevé
+    if probability >= 0.75:
+        recommendations.append("Alerte: Client à très haut risque. Contact immédiat du service Rétention.")
+    elif probability >= BEST_THRESHOLD:
+        recommendations.append("Client à risque modéré. Lancer une campagne de rétention automatisée (email/SMS).")
+
+    # Recommandations basées sur les features (Exemples)
+    # 🚨 L'accès doit se faire via .get('key') ou ['key']
+    if customer_data.get('Contract') == 'Month-to-month' and probability >= BEST_THRESHOLD:
+        recommendations.append("Proposer une offre de contrat 1 an ou 2 ans avec réduction pour stabiliser.")
     
-    # Recommandations basées sur les features
-    if customer_data.Contract == "Month-to-month":
-        recs.append("📝 Proposer un contrat annuel avec avantages")
-    
-    if customer_data.tenure < 12:
-        recs.append("🎯 Client récent: Programme de bienvenue spécial")
-    
-    if customer_data.InternetService == "Fiber optic" and customer_data.MonthlyCharges > 80:
-        recs.append("💸 Client à forte valeur: Offre VIP personnalisée")
-    
-    total_services = sum([
-        customer_data.PhoneService == "Yes",
-        customer_data.InternetService != "No",
-        customer_data.OnlineSecurity == "Yes",
-        customer_data.OnlineBackup == "Yes",
-        customer_data.DeviceProtection == "Yes",
-        customer_data.TechSupport == "Yes",
-        customer_data.StreamingTV == "Yes",
-        customer_data.StreamingMovies == "Yes"
-    ])
-    
-    if total_services < 3:
-        recs.append("📦 Proposer un bundle de services attractif")
-    
-    return recs
+    if customer_data.get('InternetService') == 'Fiber optic' and customer_data.get('MonthlyCharges', 0) > 90 and probability >= BEST_THRESHOLD:
+        recommendations.append("Vérifier la satisfaction des services fibre et envisager un rabais ou un service premium gratuit.")
+        
+    if customer_data.get('TechSupport') == 'No' and probability >= 0.6:
+        recommendations.append("Offrir un mois de support technique gratuit pour améliorer l'expérience client.")
+
+    if not recommendations:
+        recommendations.append("Client stable. Suivi standard.")
+        
+    return recommendations
 
 # ============================================================================
 # ENDPOINTS
@@ -387,43 +507,75 @@ def predict_churn(customer: CustomerData):
         raise HTTPException(status_code=500, detail=f"Erreur de prédiction: {str(e)}")
 
 
+# La classe que vous avez définie pour la requête batch est BatchPredictionRequest
 @app.post("/predict_batch", response_model=BatchPredictionResponse)
-def predict_batch(request: BatchPredictionRequest):
+def predict_batch(batch: BatchPredictionRequest):
     """
-    Prédire le churn pour plusieurs clients
+    Endpoint pour la prédiction du churn pour un lot de clients.
     """
-    if model is None:
-        raise HTTPException(status_code=503, detail="Modèle non chargé")
-    
     try:
+        customers_data = batch.customers
+        
+        # 1. Conversion des données en DataFrame
+        customers_df = pd.DataFrame([customer.model_dump() for customer in customers_data])
+        
+        # 2. Imputation pour TotalCharges manquant (si tenure=0)
+        customers_df['TotalCharges'] = customers_df.apply(
+            lambda row: 0.0 if row['tenure'] == 0.0 else row['TotalCharges'],
+            axis=1
+        )
+        
+        # 3. FEATURE ENGINEERING - Création des nouvelles features (nécessite d'avoir la fonction create_custom_features)
+        customers_df = create_custom_features(customers_df) 
+        
+        # 4. SÉPARER L'ID des features
+        customers_features_df = customers_df.drop(columns=['customerID']) 
+        
+        # ==========================================================
+        # 5. ÉTAPE CLÉ MANQUANTE: ONE-HOT ENCODING (OHE)
+        # Transforme les colonnes de type 'object' (chaînes) en colonnes binaires (0/1)
+        X_ohe = pd.get_dummies(customers_features_df, drop_first=True, dtype=float)
+        
+        # 6. ÉTAPE CRUCIALE: RE-INDEXING (Synchronisation des colonnes)
+        # S'assure que X_ohe a EXACTEMENT les 37 colonnes attendues (feature_names), 
+        # dans le bon ordre, et remplace les colonnes manquantes par 0.
+        # Cette étape résout l'erreur de "Feature names seen/unseen".
+        X_aligned = X_ohe.reindex(columns=feature_names, fill_value=0)
+        # ==========================================================
+        
+        # 7. SCALING
+        X_processed = scaler.transform(X_aligned) 
+
+        # ==========================================================
+        # 8. EXÉCUTION VECTORISÉE DES PRÉDICTIONS (Optimisation de la Performance)
+        # Calcule les probabilités pour tout le batch en une seule fois.
+        # Nous prenons la colonne 1 (index 1) qui correspond à la probabilité de CHURN.
+        probabilities = model.predict_proba(X_processed)[:, 1]
+        # ==========================================================
+
+        # 9. Post-traitement des résultats
         predictions = []
         churn_count = 0
         high_risk_count = 0
         
-        for customer in request.customers:
-            # Prétraitement
-            X = preprocess_customer(customer)
+        # On itère maintenant sur la liste des probabilités vectorisées
+        for i, probability in enumerate(probabilities): # <<< On itère sur les résultats, pas sur la matrice d'input
             
-            # Prédiction
-            probability = model.predict_proba(X)[0][1]
-            prediction = "Churn" if probability >= BEST_THRESHOLD else "No Churn"
+            customer_id = customers_data[i].customerID
+            
+            # Post-traitement (utilise la probabilité calculée)
+            prediction, risk_level, confidence = post_process(probability)
             
             if prediction == "Churn":
                 churn_count += 1
+                if risk_level == "High":
+                    high_risk_count += 1
             
-            # Niveau de risque
-            if probability >= 0.7:
-                risk_level = "High"
-                high_risk_count += 1
-            elif probability >= 0.4:
-                risk_level = "Medium"
-            else:
-                risk_level = "Low"
-            
-            confidence = max(probability, 1 - probability)
-            recommendations = get_recommendations(probability, customer)
+            # Les recommandations nécessitent toujours les données client brutes
+            recommendations = get_recommendations(probability, customers_df.iloc[i].to_dict())
             
             predictions.append(PredictionResponse(
+                customerID=customer_id, 
                 churn_probability=round(float(probability), 4),
                 churn_prediction=prediction,
                 risk_level=risk_level,
@@ -449,6 +601,9 @@ def predict_batch(request: BatchPredictionRequest):
         )
         
     except Exception as e:
+        # Afficher l'erreur détaillée dans les logs du serveur
+        print(f"FATAL ERROR IN PREDICT BATCH: {e}", flush=True) 
+        # Renvoyer l'erreur 500
         raise HTTPException(status_code=500, detail=f"Erreur de prédiction batch: {str(e)}")
 
 

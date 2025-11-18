@@ -9,7 +9,7 @@ import requests
 import logging
 import sqlite3
 from datetime import datetime
-import time
+import time 
 
 # Configuration SQLite
 DB_NAME = "customers.db" # Le même fichier que nous avions créé
@@ -40,24 +40,33 @@ print("MQTT SUBSCRIBER - TeleConnect Churn Prediction")
 print("="*80)
 
 def initialize_db():
-    """Crée la table de log des prédictions si elle n'existe pas."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    # Création de la table pour stocker les logs de prédiction
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS predictions_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customerID TEXT,
-        churn_prediction TEXT,
-        churn_probability REAL,
-        risk_level TEXT,
-        batch_timestamp REAL,
-        prediction_date TEXT
-    );
-    """)
-    conn.commit()
-    conn.close()
+    """Crée la table de log des prédictions si elle n'existe pas,
+    en s'assurant que customerID est UNIQUE."""
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        logger.info("🔧 Création/Vérification de la table 'predictions_log'...")
+        # Ligne Modifiée pour inclure UNIQUE(customerID)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS predictions_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customerID TEXT UNIQUE,  -- <<< MODIFICATION CLÉ 1
+            churn_prediction TEXT,
+            churn_probability REAL,
+            risk_level TEXT,
+            batch_timestamp REAL,
+            prediction_date TEXT
+        );
+        """)
+        conn.commit()
+        logger.info(f"✅ Table 'predictions_log' vérifiée/créée (customerID est UNIQUE) dans {DB_NAME}")
+    except sqlite3.Error as e:
+        logger.error(f"❌ Erreur SQLite lors de l'initialisation: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 # Appelez cette fonction une fois pour être sûr que la table existe
 initialize_db()
@@ -80,32 +89,26 @@ def on_message(client, userdata, msg):
     conn = None
     
     try:
-        # 1. DÉCODER ET EXTRAIRE LES DONNÉES CLÉS (y compris batch_timestamp)
+        # Décoder le message et extraire les données
         request_data = json.loads(msg.payload.decode())
         customers = request_data.get('customers', [])
+        # 'timestamp' est le batch_timestamp
+        batch_timestamp = request_data.get('timestamp', time.time())
         
-        # S'ASSURER QUE LA LECTURE EST FAITE ICI :
-        batch_timestamp = request_data.get('timestamp', time.time()) 
-        # C'est la ligne critique.
-        
-        # 2. LOGGING (pour vérification)
-        logger.info(f"📦 Batch reçu: ")
-        logger.info(f"   Timestamp: {batch_timestamp}") # Utilisez la variable ici
-        logger.info(f"   Nombre de clients: {len(customers)}")
-        
-        # Appeler l'API pour faire les prédictions
+        logger.info(f"📦 Batch reçu: {len(customers)} clients")
         logger.info(f"🔄 Envoi à l'API pour prédiction...")
         
         api_payload = {"customers": customers}
+        # Appel API
         response = requests.post(API_URL, json=api_payload, timeout=30)
         
         if response.status_code == 200:
             predictions_result = response.json()
             predictions = predictions_result.get('predictions', [])
             
-            logger.info(f"✅ Prédictions réussies !")
+            logger.info(f"✅ Prédictions réussies ! ({len(predictions)} résultats)")
             
-            # === SAUVEGARDE DANS predictions_log ===
+            # === DÉBUT DE LA SAUVEGARDE SQLITE (POINT B.) ===
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
             
@@ -113,25 +116,30 @@ def on_message(client, userdata, msg):
             current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             for pred in predictions:
+                # IMPORTANT : Extraction de l'ID client pour l'unicité
+                customer_id = pred.get('customerID', 'UNKNOWN') 
+
                 data_to_insert.append((
-                    pred.get('customerID'), # IMPORTANT : L'API DOIT RETOURNER CET ID
-                    pred.get('churn_prediction'), 
-                    pred.get('churn_probability'),
-                    pred.get('risk_level'),
+                    customer_id,
+                    pred['churn_prediction'], 
+                    pred['churn_probability'],
+                    pred['risk_level'],
                     batch_timestamp,
                     current_datetime
                 ))
 
+            # Requête pour insérer ou remplacer (UPSERT)
             insert_query = """
-            INSERT INTO predictions_log 
+            INSERT OR REPLACE INTO predictions_log 
             (customerID, churn_prediction, churn_probability, risk_level, batch_timestamp, prediction_date) 
             VALUES (?, ?, ?, ?, ?, ?);
             """
             
             cursor.executemany(insert_query, data_to_insert)
             conn.commit()
-            logger.info(f"💾 {len(predictions)} prédictions enregistrées dans '{DB_NAME}'")
-            # =======================================
+            
+            logger.info(f"💾 {cursor.rowcount} prédictions mises à jour/ajoutées dans '{DB_NAME}'")
+            # === FIN DE LA SAUVEGARDE SQLITE ===
             
         else:
             logger.error(f"❌ Erreur API: {response.status_code}")
