@@ -6,15 +6,15 @@
         "tp": 302
     },
     "costs": {
-        "cost_fp_total": 1460000.0,
+        "cost_fp_total": 233600.0,
         "cost_fn_total": 734400.0,
-        "cost_actions": 2970000.0,
+        "cost_actions": 475200.0,
         "revenue_saved": 1540200.0,
-        "net_revenue": -1429800.0,
-        "savings_vs_nothing": 110400.0
+        "net_revenue": 1065000.0,
+        "savings_vs_nothing": 2605200.0
     },
-    "optimal_threshold": 0.6499999999999999,
-    "roi_percent": -48.14141414141414,
+    "optimal_threshold": 0.3,
+    "roi_percent": 224.11616161616163,
     "threshold_analysis": [
         {
             "threshold": 0.3,
@@ -22,10 +22,10 @@
             "fp": 468,
             "fn": 28,
             "tn": 565,
-            "cost_fp": 2340000,
+            "cost_fp": 374400,
             "cost_fn": 285600,
             "revenue_saved": 1764600.0,
-            "net_revenue": -2305400.0
+            "net_revenue": 1113400.0
         },
         {
             "threshold": 0.35,
@@ -33,10 +33,10 @@
             "fp": 439,
             "fn": 37,
             "tn": 594,
-            "cost_fp": 2195000,
+            "cost_fp": 351200,
             "cost_fn": 377400,
             "revenue_saved": 1718700.0,
-            "net_revenue": -2161300.0
+            "net_revenue": 1097900.0
         },
         {
             "threshold": 0.39999999999999997,
@@ -44,10 +44,10 @@
             "fp": 396,
             "fn": 48,
             "tn": 637,
-            "cost_fp": 1980000,
+            "cost_fp": 316800,
             "cost_fn": 489600,
             "revenue_saved": 1662600.0,
-            "net_revenue": -1947400.0
+            "net_revenue": 1085000.0
         },
         {
             "threshold": 0.44999999999999996,
@@ -55,10 +55,10 @@
             "fp": 349,
             "fn": 60,
             "tn": 684,
-            "cost_fp": 1745000,
+            "cost_fp": 279200,
             "cost_fn": 612000,
             "revenue_saved": 1601400.0,
-            "net_revenue": -1713600.0
+            "net_revenue": 1071000.0
         },
         {
             "threshold": 0.49999999999999994,
@@ -66,10 +66,10 @@
             "fp": 292,
             "fn": 72,
             "tn": 741,
-            "cost_fp": 1460000,
+            "cost_fp": 233600,
             "cost_fn": 734400,
             "revenue_saved": 1540200.0,
-            "net_revenue": -1429800.0
+            "net_revenue": 1065000.0
         },
         {
             "threshold": 0.5499999999999999,
@@ -77,10 +77,10 @@
             "fp": 249,
             "fn": 83,
             "tn": 784,
-            "cost_fp": 1245000,
+            "cost_fp": 199200,
             "cost_fn": 846600,
             "revenue_saved": 1484100.0,
-            "net_revenue": -1215900.0
+            "net_revenue": 1052100.0
         },
         {
             "threshold": 0.5999999999999999,
@@ -88,10 +88,10 @@
             "fp": 199,
             "fn": 109,
             "tn": 834,
-            "cost_fp": 995000,
+            "cost_fp": 159200,
             "cost_fn": 1111800,
             "revenue_saved": 1351500.0,
-            "net_revenue": -968500.0
+            "net_revenue": 980300.0
         },
         {
             "threshold": 0.6499999999999999,
@@ -99,10 +99,10 @@
             "fp": 150,
             "fn": 134,
             "tn": 883,
-            "cost_fp": 750000,
+            "cost_fp": 120000,
             "cost_fn": 1366800,
             "revenue_saved": 1224000.0,
-            "net_revenue": -726000.0
+            "net_revenue": 912000.0
         }
     ]
 }
