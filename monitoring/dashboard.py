@@ -46,10 +46,10 @@ else:
     # 1. PRÉPARATION DES DONNÉES
     
     # A. Identifier le dernier batch
-    latest_timestamp = df_predictions['batch_timestamp'].max()
+    latest_timestamp = df_predictions['prediction_date'].max()
     
     # B. Filtrer les données pour ne garder que ce dernier batch (pour les métriques principales)
-    df_latest = df_predictions[df_predictions['batch_timestamp'] == latest_timestamp].copy()
+    df_latest = df_predictions[df_predictions['prediction_date'] == latest_timestamp]
     
     # C. Définir le DataFrame à afficher dans le tableau (le dernier batch est le plus pertinent)
     df_display_table = df_latest.copy()

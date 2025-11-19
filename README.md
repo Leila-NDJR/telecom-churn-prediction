@@ -1,124 +1,177 @@
-# telecom-churn-prediction
-Système de prédiction du churn client pour TeleConnect Afrique
-#   t e l e c o m - c h u r n - p r e d i c t i o n 2 # 📊 TeleConnect Churn Prediction
+📊 Système de Prédiction du Churn Client - TeleConnect Afrique
+M2 Data Science - Projet End-to-End Auteur : K. Jessy | Date : Novembre 2025
 
-Système de prédiction du churn client pour TeleConnect Afrique utilisant le Machine Learning.
+📝 Contexte du Projet
+TeleConnect Afrique, opérateur majeur en Afrique de l'Ouest, fait face à un taux de désabonnement (churn) critique de 27%. Ce projet vise à déployer une solution Data Science complète pour prédire quels clients risquent de quitter l'opérateur afin de mener des actions de rétention ciblées.
 
-## 🎯 Objectif
+L'objectif technique est de fournir un système capable de traiter des lots de clients (batch processing) via une architecture découplée et performante, avec un monitoring en temps réel.
 
-Prédire les clients susceptibles de résilier leur abonnement pour mettre en place des stratégies de rétention ciblées et réduire le taux de désabonnement.
+🏗️ Architecture Technique
+Le système repose sur une architecture événementielle asynchrone :
 
-## 🚀 Fonctionnalités
+Source de Données (SQLite) : Stockage des informations clients.
 
-- ✅ Prédiction individuelle via API REST
-- ✅ Prédiction batch pour plusieurs clients
-- ✅ Feature Engineering avancé (5 features personnalisées)
-- ✅ Seuil de décision optimisé
-- ✅ Recommandations d'action automatiques
-- ✅ Niveaux de risque (Low, Medium, High)
+Publisher (MQTT) : Simule l'envoi de lots de clients à analyser.
 
-## 🛠️ Technologies
+Broker (Mosquitto) : Gère la file d'attente des messages.
 
-- **Backend**: FastAPI
-- **ML**: XGBoost, Scikit-learn
-- **Data Processing**: Pandas, NumPy
-- **Deployment**: Uvicorn
+Subscriber (MQTT) : Écoute les demandes, interroge l'API et stocke les résultats.
 
-## 📂 Structure du projet
-```
+API de Prédiction (FastAPI) : Expose le modèle XGBoost optimisé (latence < 200ms).
+
+Dashboard (Streamlit) : Visualisation des KPIs et des clients à risque.
+
+⚙️ Stack Technique
+Langage : Python 
+
+API & Web : FastAPI, Uvicorn
+
+Machine Learning : XGBoost, Scikit-learn, Pandas, NumPy
+
+Messaging : Eclipse Mosquitto, Paho-MQTT
+
+Visualisation : Streamlit, Plotly
+
+Base de Données : SQLite3
+
+📂 Structure du Projet
+## 📂 Structure du Projet
+
+
 telecom-churn-prediction/
-├── api/
-│   └── main.py              # API FastAPI
-├── data/
-│   ├── raw/                 # Données brutes
-│   └── processed/           # Modèles et scaler
-├── notebooks/               # Notebooks d'analyse
-│   ├── 01_EDA.ipynb
-│   ├── 02_Preprocessing.ipynb
-│   └── 03_Modeling.ipynb
-├── .gitignore
-├── requirements.txt
-└── README.md
-```
+│
+├── api/                       # API FastAPI
+│   ├── main.py                # Application principale (Endpoints & Logique)
+│   └── test_api.py            # Script de test de performance
+│
+├── data/                      # Gestion des données
+│   ├── processed/             # Artefacts générés (Modèles, Scalers, Métadonnées)
+│   │   ├── best_model.pkl
+│   │   ├── scaler.pkl
+│   │   ├── model_metadata.json
+│   │   └── ...
+│   └── raw/                   # Données brutes
+│       └── WA_Fn-UseC_-Telco-Customer-Churn.csv
+│
+├── monitoring/                # Surveillance temps réel
+│   ├── dashboard.py           # Interface Streamlit
+│   ├── mqtt_publisher.py      # Simulateur d'envoi de clients
+│   └── mqtt_suscriber.py      # Service d'écoute et d'enregistrement
+│
+├── notebooks/                 # Étapes de Data Science (Jupyter)
+│   ├── 01_eda.ipynb                # Analyse exploratoire
+│   ├── 02_preprocessing.ipynb      # Nettoyage et Feature Engineering
+│   ├── 03_modeling.ipynb           # Entraînement et évaluation
+│   └── 04_business_analysis.ipynb  # Analyse d'impact business
+│
+├── src/                       # Code source modulaire
+│   ├── data_processing/       # Scripts de traitement de données
+│   ├── models/                # Classes de modèles
+│   └── utils/                 # Fonctions utilitaires
+│
+├── customers.db               # Base de données SQLite active
+├── customers_db.py            # Script d'initialisation de la BDD
+├── add_new_customers_db.py    # Script d'ajout de données de test
+├── requirements.txt           # Liste des dépendances Python
+└── README.md                  # Documentation du projet
+🚀 Guide d'Installation et de Démarrage
+1. Prérequis
+Assurez-vous d'avoir Python installé ainsi que le broker Mosquitto en cours d'exécution sur votre machine.
 
-## ⚙️ Installation
-```bash
-# Cloner le dépôt
-git clone https://github.com/Leila-NDJR/telecom-churn-prediction2.git
-cd telecom-churn-prediction2
+2. Installation des dépendances
+Bash
 
-# Installer les dépendances
-pip install -r requirements.txt
-```
+# Créer un environnement virtuel
+python -m venv venv
 
-## 🚀 Utilisation
+# Activer l'environnement
+# Windows :
+venv\Scripts\activate
 
-### Lancer l'API
-```bash
+# Installer les paquets requis
+pip install -r config/requirements.txt
+
+3. Initialisation de la Base de Données
+Avant de lancer le système, nous devons créer la base de données et y injecter des clients fictifs.
+
+Bash
+
+# Supprimer l'ancienne base si elle existe pour partir sur du propre
+# del customers.db (Windows) ou rm customers.db 
+
+# Créer la base et les 10 premiers clients
+python customers_db.py
+
+# Ajouter 30 clients supplémentaires pour le test
+python add_new_customers_db.py
+
+4. Lancement des Services
+Ouvrez 4 terminaux différents pour lancer les composants du système :
+
+Terminal 1 : L'API de Prédiction
+
+Bash
+
 python api/main.py
-```
+# L'API sera accessible sur http://localhost:8000
+Terminal 2 : Le Subscriber (Écouteur)
 
-L'API sera accessible sur : **http://localhost:8000**
+Bash
 
-Documentation interactive : **http://localhost:8000/docs**
+python monitoring/mqtt_suscriber.py
+# Attend les messages MQTT...
+Terminal 3 : Le Dashboard de Monitoring
 
-### Exemple de requête
-```bash
-curl -X POST "http://localhost:8000/predict" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customerID": "ID001",
-    "gender": "Female",
-    "SeniorCitizen": 0,
-    "Partner": "Yes",
-    "Dependents": "No",
-    "tenure": 12,
-    "Contract": "Month-to-month",
-    "PaperlessBilling": "Yes",
-    "PaymentMethod": "Electronic check",
-    "MonthlyCharges": 70.5,
-    "TotalCharges": 846.0,
-    "PhoneService": "Yes",
-    "MultipleLines": "No",
-    "InternetService": "Fiber optic",
-    "OnlineSecurity": "No",
-    "OnlineBackup": "No",
-    "DeviceProtection": "No",
-    "TechSupport": "No",
-    "StreamingTV": "Yes",
-    "StreamingMovies": "Yes"
-  }'
-```
+Bash
 
-## 📊 Performance du modèle
+streamlit run monitoring/dashboard.py
+# Ouvre le navigateur sur http://localhost:8501
+Terminal 4 : Le Publisher (Déclencheur)
 
-- **Modèle**: XGBoost
-- **Seuil optimal**: 0.35
-- **Features**: 37 (après feature engineering)
+Bash
 
-## 📈 Features Engineering
+python monitoring/mqtt_publisher.py
+# Envoie le lot de 40 clients pour analyse
+📊 Performances du Modèle
+Le modèle utilisé est un XGBoost Classifier optimisé.
 
-5 features personnalisées créées :
-1. **AvgMonthlyCharges** - Charges moyennes par mois d'ancienneté
-2. **TotalServices** - Nombre total de services actifs
-3. **ChargesPerService** - Charges mensuelles par service
-4. **SeniorWithFamily** - Senior avec famille
-5. **TenureCategory** - Catégorie d'ancienneté
+Métriques Techniques (Test Set)
+AUC-ROC : 0.84
 
-## 🔗 API Endpoints
+Recall (Taux de détection) : 80.7% (Priorité projet : minimiser les Faux Négatifs)
 
-| Endpoint | Méthode | Description |
-|----------|---------|-------------|
-| `/` | GET | Page d'accueil |
-| `/health` | GET | Status de l'API |
-| `/model_info` | GET | Infos sur le modèle |
-| `/predict` | POST | Prédiction unitaire |
-| `/predict_batch` | POST | Prédiction batch |
+Accuracy : 74.1%
 
-## 👥 Auteur
+API : > 200 ms 
 
-**Leila NDJR**
+Métriques Business
+Seuil de décision : 0.50 (Optimisé pour l'équilibre Précision/Rappel)
 
-## 📄 Licence
+Niveaux de Risque :
 
-Ce projet est sous licence MIT.
+🔴 High (> 75%) : Action immédiate requise.
+
+🟠 Medium (50-75%) : Campagne de rétention standard.
+
+🟢 Low (< 50%) : Client stable.
+
+🛠️ Fonctionnalités Clés Implémentées
+Feature Engineering Automatisé :
+
+Création dynamique de variables (TotalServices, AvgMonthlyCharges, SeniorWithFamily) directement dans l'API.
+
+Pipeline de Prétraitement Robuste :
+
+Gestion des valeurs manquantes.
+
+One-Hot Encoding aligné avec le modèle d'entraînement.
+
+Scaling des données.
+
+Historisation et Dédoublonnage :
+
+Le système garde une trace unique de la dernière prédiction pour chaque client (INSERT OR REPLACE dans SQLite).
+
+Monitoring Temps Réel :
+
+Le dashboard se met à jour automatiquement à chaque nouveau batch traité.
