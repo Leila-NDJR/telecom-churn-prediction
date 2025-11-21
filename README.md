@@ -1,177 +1,151 @@
-📊 Système de Prédiction du Churn Client - TeleConnect Afrique
-M2 Data Science - Projet End-to-End Auteur : K. Jessy | Date : Novembre 2025
+# 📊 Système de Prédiction du Churn Client - TeleConnect Afrique
+Projet End-to-End Data Science | M1 Data Science Auteur : K. Jessy Leila| Date : Novembre 2025
 
-📝 Contexte du Projet
-TeleConnect Afrique, opérateur majeur en Afrique de l'Ouest, fait face à un taux de désabonnement (churn) critique de 27%. Ce projet vise à déployer une solution Data Science complète pour prédire quels clients risquent de quitter l'opérateur afin de mener des actions de rétention ciblées.
+📝 Description du Projet
+Ce projet est une solution complète (de la donnée brute à la visualisation) visant à prédire le désabonnement (churn) des clients de l'opérateur TeleConnect Afrique.
 
-L'objectif technique est de fournir un système capable de traiter des lots de clients (batch processing) via une architecture découplée et performante, avec un monitoring en temps réel.
+Face à un taux de churn de 27%, ce système permet de :
 
-🏗️ Architecture Technique
-Le système repose sur une architecture événementielle asynchrone :
+1- Analyser les données historiques pour comprendre les facteurs de risque.
 
-Source de Données (SQLite) : Stockage des informations clients.
+2- Prédire en temps réel (via Batch) la probabilité de départ de nouveaux clients.
 
-Publisher (MQTT) : Simule l'envoi de lots de clients à analyser.
+3- Visualiser les résultats sur un tableau de bord pour la prise de décision.
 
-Broker (Mosquitto) : Gère la file d'attente des messages.
-
-Subscriber (MQTT) : Écoute les demandes, interroge l'API et stocke les résultats.
-
-API de Prédiction (FastAPI) : Expose le modèle XGBoost optimisé (latence < 200ms).
-
-Dashboard (Streamlit) : Visualisation des KPIs et des clients à risque.
-
-⚙️ Stack Technique
-Langage : Python 
-
-API & Web : FastAPI, Uvicorn
-
-Machine Learning : XGBoost, Scikit-learn, Pandas, NumPy
-
-Messaging : Eclipse Mosquitto, Paho-MQTT
-
-Visualisation : Streamlit, Plotly
-
-Base de Données : SQLite3
+L'architecture repose sur un modèle XGBoost exposé via une API FastAPI, communiquant via un protocole de messagerie asynchrone (MQTT) et monitoré via Streamlit.
 
 📂 Structure du Projet
-## 📂 Structure du Projet
+Voici l'organisation des fichiers du projet :
 
+Bash
 
 telecom-churn-prediction/
 │
-├── api/                       # API FastAPI
-│   ├── main.py                # Application principale (Endpoints & Logique)
-│   └── test_api.py            # Script de test de performance
+├── api/                       # COEUR DU SYSTÈME (BACKEND)
+│   ├── assets/                # Ressources statiques (optionnel)
+│   ├── main.py                # Application FastAPI (Logique de prédiction & Endpoints)
+│   └── test_api.py            # Script de test de performance et de latence
 │
-├── data/                      # Gestion des données
-│   ├── processed/             # Artefacts générés (Modèles, Scalers, Métadonnées)
-│   │   ├── best_model.pkl
-│   │   ├── scaler.pkl
+├── data/                      # GESTION DES DONNÉES
+│   ├── processed/             # Artefacts du modèle (Ne pas supprimer/modifier)
+│   │   ├── best_model.pkl     # Modèle XGBoost entraîné
+│   │   ├── scaler.pkl         # Préprocesseur (StandardScaler + OHE)
 │   │   ├── model_metadata.json
 │   │   └── ...
-│   └── raw/                   # Données brutes
-│       └── WA_Fn-UseC_-Telco-Customer-Churn.csv
+│   └── raw/                   # Données sources (CSV Kaggle)
 │
-├── monitoring/                # Surveillance temps réel
-│   ├── dashboard.py           # Interface Streamlit
-│   ├── mqtt_publisher.py      # Simulateur d'envoi de clients
-│   └── mqtt_suscriber.py      # Service d'écoute et d'enregistrement
+├── monitoring/                # SURVEILLANCE ET MESSAGING
+│   ├── dashboard.py           # Interface Utilisateur (Streamlit)
+│   ├── mqtt_publisher.py      # Simulateur d'envoi de clients (Source)
+│   └── mqtt_suscriber.py      # Service d'écoute et d'enregistrement en BDD
 │
-├── notebooks/                 # Étapes de Data Science (Jupyter)
-│   ├── 01_eda.ipynb                # Analyse exploratoire
+├── notebooks/                 # LABORATOIRE DATA SCIENCE (Jupyter)
+│   ├── 01_eda.ipynb                # Analyse exploratoire des données
 │   ├── 02_preprocessing.ipynb      # Nettoyage et Feature Engineering
-│   ├── 03_modeling.ipynb           # Entraînement et évaluation
-│   └── 04_business_analysis.ipynb  # Analyse d'impact business
+│   ├── 03_modeling.ipynb           # Entraînement, tuning et évaluation
+│   └── 04_business_analysis.ipynb  # Calcul du ROI et analyse d'impact
 │
-├── src/                       # Code source modulaire
-│   ├── data_processing/       # Scripts de traitement de données
-│   ├── models/                # Classes de modèles
-│   └── utils/                 # Fonctions utilitaires
-│
-├── customers.db               # Base de données SQLite active
-├── customers_db.py            # Script d'initialisation de la BDD
-├── add_new_customers_db.py    # Script d'ajout de données de test
+├── customers.db               # Base de données SQLite active (Clients + Logs)
+├── customers_db.py            # Script 1 : Initialisation de la BDD (10 clients)
+├── add_new_customers_db.py    # Script 2 : Ajout de données de test (30 clients)
 ├── requirements.txt           # Liste des dépendances Python
-└── README.md                  # Documentation du projet
-🚀 Guide d'Installation et de Démarrage
-1. Prérequis
-Assurez-vous d'avoir Python installé ainsi que le broker Mosquitto en cours d'exécution sur votre machine.
+└── README.md                  # Documentation officielle
 
-2. Installation des dépendances
-Bash
 
-# Créer un environnement virtuel
+⚙️ Prérequis Techniques
+Avant de commencer, assurez-vous que votre machine dispose de :
+
+Python 3.10+ installé.
+
+Eclipse Mosquitto (Broker MQTT) installé et démarré.
+
+Windows : Télécharger sur mosquitto.org. Une fois installé, lancez le service (Services Windows -> Mosquitto Broker) ou exécutez mosquitto -v dans un terminal.
+
+
+🚀 Guide d'Installation (Pas à Pas)
+
+1. Cloner et configurer l'environnement (git clone https://github.com/Leila-NDJR/telecom-churn-prediction.git )
+
+Ouvrez votre terminal (PowerShell ou Bash) à la racine du projet :
+
+# 1. Créer un environnement virtuel pour isoler le projet
 python -m venv venv
 
-# Activer l'environnement
-# Windows :
+# 2. Activer l'environnement
+# Sur Windows :
 venv\Scripts\activate
+# Sur Mac/Linux :
+source venv/bin/activate
 
-# Installer les paquets requis
-pip install -r config/requirements.txt
+# 3. Installer les dépendances
+pip install -r requirements.txt
 
-3. Initialisation de la Base de Données
-Avant de lancer le système, nous devons créer la base de données et y injecter des clients fictifs.
+2. Initialiser la Base de Données
+Nous devons créer la base de données locale SQLite et y injecter des clients pour simuler un environnement réel.
 
-Bash
+Note : Si un fichier customers.db existe déjà et que vous voulez repartir de zéro, supprimez-le avant de lancer ces commandes.
 
-# Supprimer l'ancienne base si elle existe pour partir sur du propre
-# del customers.db (Windows) ou rm customers.db 
-
-# Créer la base et les 10 premiers clients
+# Étape A : Créer la structure et les 10 premiers clients
 python customers_db.py
 
-# Ajouter 30 clients supplémentaires pour le test
+# Étape B : Ajouter 30 clients supplémentaires pour le test batch
 python add_new_customers_db.py
+▶️ Guide d'Exécution (Démarrage du Système)
+Pour voir le projet fonctionner, vous devez ouvrir 4 terminaux différents (avec l'environnement virtuel activé dans chacun) et lancer les services dans cet ordre précis.
 
-4. Lancement des Services
-Ouvrez 4 terminaux différents pour lancer les composants du système :
+Terminal 1 : L'API de Prédiction (Le Cerveau)
+Ce service charge le modèle XGBoost et attend les requêtes.
 
-Terminal 1 : L'API de Prédiction
-
-Bash
+Bash 
 
 python api/main.py
-# L'API sera accessible sur http://localhost:8000
-Terminal 2 : Le Subscriber (Écouteur)
+Attendre le message : Application startup complete. L'API est accessible sur : http://localhost:8000/docs
+
+Terminal 2 : Le Subscriber MQTT (Le Pont)
+Ce service écoute les demandes, interroge l'API et sauvegarde les résultats.
 
 Bash
 
 python monitoring/mqtt_suscriber.py
-# Attend les messages MQTT...
-Terminal 3 : Le Dashboard de Monitoring
+Attendre le message : ✅ Connecté au broker MQTT
+
+Terminal 3 : Le Dashboard (La Vue)
+L'interface pour visualiser les KPIs et les alertes churn.
 
 Bash
 
 streamlit run monitoring/dashboard.py
-# Ouvre le navigateur sur http://localhost:8501
-Terminal 4 : Le Publisher (Déclencheur)
+Votre navigateur s'ouvrira automatiquement sur : http://localhost:8501
+
+Terminal 4 : Le Publisher MQTT (Le Déclencheur)
+Ce script simule l'envoi d'un lot de clients (batch) à analyser.
 
 Bash
 
 python monitoring/mqtt_publisher.py
-# Envoie le lot de 40 clients pour analyse
-📊 Performances du Modèle
-Le modèle utilisé est un XGBoost Classifier optimisé.
+✅ Vérification du Bon Fonctionnement
+Si tout s'est bien passé :
 
-Métriques Techniques (Test Set)
+Dans le Terminal 4 (Publisher), vous voyez : 📤 Envoi de 40 clients...
+
+Dans le Terminal 2 (Subscriber), vous voyez défiler les logs : 📦 Batch reçu, ✅ Prédiction réussie, 💾 40 prédictions enregistrées.
+
+Sur le Dashboard (Navigateur), rafraîchissez la page (ou attendez 60s). Vous devriez voir :
+
+Statistiques du Dernier Batch : 40 clients.
+
+Tableau détaillé : La liste des clients avec leur ID, leur probabilité de churn et le niveau de risque.
+
+# 📊 Performances et Métriques
+
+Le modèle a été évalué sur un jeu de test indépendant.
+
+Modèle utilisé : XGBoost Classifier.
+
+Seuil de décision : 0.50 (Optimisé business).
+
 AUC-ROC : 0.84
 
-Recall (Taux de détection) : 80.7% (Priorité projet : minimiser les Faux Négatifs)
+Recall (Détection des partants) : 80.7%
 
-Accuracy : 74.1%
-
-API : > 200 ms 
-
-Métriques Business
-Seuil de décision : 0.50 (Optimisé pour l'équilibre Précision/Rappel)
-
-Niveaux de Risque :
-
-🔴 High (> 75%) : Action immédiate requise.
-
-🟠 Medium (50-75%) : Campagne de rétention standard.
-
-🟢 Low (< 50%) : Client stable.
-
-🛠️ Fonctionnalités Clés Implémentées
-Feature Engineering Automatisé :
-
-Création dynamique de variables (TotalServices, AvgMonthlyCharges, SeniorWithFamily) directement dans l'API.
-
-Pipeline de Prétraitement Robuste :
-
-Gestion des valeurs manquantes.
-
-One-Hot Encoding aligné avec le modèle d'entraînement.
-
-Scaling des données.
-
-Historisation et Dédoublonnage :
-
-Le système garde une trace unique de la dernière prédiction pour chaque client (INSERT OR REPLACE dans SQLite).
-
-Monitoring Temps Réel :
-
-Le dashboard se met à jour automatiquement à chaque nouveau batch traité.
+Latence API (Batch 30 clients) : ~2600ms.
