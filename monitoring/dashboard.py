@@ -67,7 +67,10 @@ else:
     total_customers = len(df_latest)
     
     # S'assurer que 'Churn' est bien le terme utilisé par l'API
-    churn_count = df_latest['churn_prediction'].str.contains('Churn').sum() 
+    # --- CORRECTION ---
+    # On utilise l'égalité (==) au lieu de 'contains' pour ne pas compter 'No Churn'
+    churn_count = (df_latest['churn_prediction'] == 'Churn').sum()
+    # ------------------
     churn_rate = churn_count / total_customers if total_customers > 0 else 0
 
     # Calcul des niveaux de risque (sur le dernier batch)
@@ -98,6 +101,98 @@ else:
     
 
     st.markdown("---")
+
+    # ... (Après le tableau détaillé)
+
+    st.markdown("---")
+    st.subheader("🔮 Simulation d'Impact Business")
+    
+    st.info("Simulez l'impact de vos actions de rétention sur le taux de churn global.")
+
+    # 1. Paramètres de la simulation
+    col_sim1, col_sim2 = st.columns(2)
+    
+    with col_sim1:
+        conversion_rate = st.slider(
+            "Taux de succès des campagnes marketing (%)", 
+            min_value=0, 
+            max_value=100, 
+            value=30,
+            help="Pourcentage de clients à risque qui restent grâce à l'offre de rétention."
+        ) / 100
+    
+    with col_sim2:
+        retention_cost = st.number_input(
+            "Coût moyen d'une action de rétention (FCFA)", 
+            value=800,
+            step=100
+        )
+        avg_revenue = 30600 # Revenu moyen estimé par client sauvé (FCFA) pour une année de plus
+
+    # 2. Calculs
+    # On prend le churn count actuel (calculé plus haut dans votre script)
+    # Si churn_count n'est pas défini globalement, recalculer : 
+    # churn_count = df_latest['churn_prediction'].str.contains('Churn').sum()
+    
+    customers_saved = int(churn_count * conversion_rate)
+    new_churn_count = churn_count - customers_saved
+    new_churn_rate = new_churn_count / total_customers if total_customers > 0 else 0
+    
+    money_saved = customers_saved * avg_revenue
+    campaign_cost = churn_count * retention_cost # On cible tous les churners prédits
+    net_profit = money_saved - campaign_cost
+
+    # 3. Affichage des résultats
+    st.write(f"### 📉 Résultat Projeté : {new_churn_rate*100:.1f}% de Churn")
+    
+    # Comparaison visuelle
+    col_res1, col_res2, col_res3 = st.columns(3)
+    
+    col_res1.metric(
+        "Clients Sauvés", 
+        f"{customers_saved}", 
+        f"-{customers_saved} départs évités"
+    )
+    
+    col_res2.metric(
+        "Chiffre d'Affaires Sauvé", 
+        f"{money_saved:,} FCFA",
+        "Basé sur la LTV"
+    )
+    
+    col_res3.metric(
+        "ROI Net de l'opération", 
+        f"{net_profit:,} FCFA", 
+        f"Coût campagne: {campaign_cost:,} FCFA",
+        delta_color="normal" if net_profit > 0 else "inverse"
+    )
+
+    # Barre de progression visuelle
+    st.write("Evolution du Taux de Churn :")
+    current_rate_val = churn_rate * 100
+    target_rate_val = new_churn_rate * 100
+    
+    chart_data = pd.DataFrame({
+        "Stade": ["Avant Action", "Après Action"],
+        "Taux de Churn (%)": [current_rate_val, target_rate_val]
+    })
+    
+    fig_sim = px.bar(
+        chart_data, 
+        x="Stade", 
+        y="Taux de Churn (%)", 
+        color="Stade",
+        color_discrete_map={"Avant Action": "red", "Après Action": "green"},
+        text_auto='.1f'
+    )
+    fig_sim.update_layout(showlegend=False)
+    st.plotly_chart(fig_sim, use_container_width=True)
+    
+    # Message de réussite
+    if new_churn_rate < 0.15:
+        st.success(f"✅ OBJECTIF ATTEINT ! Avec un taux de succès de {conversion_rate*100:.0f}%, vous passez sous la barre des 15%.")
+    else:
+        st.warning(f"⚠️ Objectif non atteint. Il faut améliorer l'efficacité des campagnes marketing.")
     
     # 5. TABLEAU DÉTAILLÉ DES PRÉDICTIONS
     st.subheader(f"Détail des Prédictions du Dernier Batch")
