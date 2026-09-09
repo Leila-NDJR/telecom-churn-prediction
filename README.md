@@ -1,5 +1,7 @@
 # 📊 Système de Prédiction du Churn Client - TeleConnect Afrique
-Projet End-to-End Data Science | M1 Data Science Auteur : K. Jessy Leila| Date : Novembre 2025
+
+**Auteur : K. Jessy**
+Projet End-to-End Data Science | M1 Data Science | Date : Novembre 2025
 
 📝 Description du Projet
 Ce projet est une solution complète (de la donnée brute à la visualisation) visant à prédire le désabonnement (churn) des clients de l'opérateur TeleConnect Afrique.
@@ -142,10 +144,30 @@ Le modèle a été évalué sur un jeu de test indépendant.
 
 Modèle utilisé : XGBoost Classifier.
 
-Seuil de décision : 0.50 (Optimisé business).
+Seuil de décision : 0.30 (Optimisé business — voir `data/processed/business_analysis.json`).
+Ce seuil maximise le revenu net attendu (analyse coûts/bénéfices Notebook 04) : ~1 113 400 FCFA à 0.30 contre ~1 065 000 FCFA au seuil générique 0.50, soit un gain de ~48 400 FCFA sur le jeu de test.
 
 AUC-ROC : 0.84
 
-Recall (Détection des partants) : 80.7%
+Recall (Détection des partants) : 80.7% au seuil générique 0.50, **92.5% au seuil business 0.30**.
 
 Latence API (Batch 30 clients) : ~2600ms.
+
+## ✅ Résultats clés
+
+Le seuil de décision de l'API était figé à une valeur générique (0.50) sans jamais lire l'analyse ROI déjà calculée dans le Notebook 04. Après correction :
+
+- **Seuil business 0.30 réellement branché en production** (`api/main.py` lit désormais `business_analysis.json`, avec repli sur `model_metadata.json` puis 0.35).
+- **+4,5 % de revenu net attendu** sur le jeu de test (1 407 clients) : ~1 113 400 FCFA au seuil 0.30 contre ~1 065 000 FCFA au seuil générique 0.50 (soit +48 400 FCFA).
+- **Recall porté à 92,5 %** (contre 80,7 % au seuil 0.50) : beaucoup plus de clients à risque réellement détectés, au prix d'un peu plus de faux positifs — arbitrage assumé par l'analyse coûts/bénéfices.
+- **Score de priorisation `priority_score` = risque × valeur client** (`churn_probability × clv_proxy`), exposé dans `/predict` et `/predict_batch`, pour cibler en premier les clients à la fois à risque ET à forte valeur avec un budget de rétention limité.
+- **Recommandations enfin actionnables** : une seule fonction `get_recommendations()` (au lieu de deux copies dupliquées), avec canal de contact adapté au profil et offre chiffrée réelle.
+
+## 🎯 Recommandations
+
+À l'attention d'une direction rétention / CRM souhaitant s'appuyer sur ce système :
+
+1. **Valider la transférabilité du modèle sur de vraies données TeleConnect Afrique avant tout déploiement réel** — le dataset d'entraînement (Kaggle, IBM Telco) est d'origine occidentale (marché nord-américain) ; les structures tarifaires et comportements de churn africains peuvent différer sensiblement.
+2. **Mesurer l'efficacité réelle des actions de rétention par un test A/B** avant toute généralisation — comparer un groupe de clients contactés selon `priority_score` (canal + offre) à un groupe témoin, sur 1 à 2 cycles de facturation.
+3. **Réviser le seuil business (0.30) trimestriellement**, en le recalculant sur `business_analysis.json` à mesure que de nouvelles données de churn et de coûts de rétention arrivent, plutôt que de le figer durablement dans le code.
+4. **Doter les équipes terrain d'un tableau de bord trié par `priority_score`** pour allouer en priorité le budget de rétention limité aux clients à la fois les plus à risque et les plus rentables.

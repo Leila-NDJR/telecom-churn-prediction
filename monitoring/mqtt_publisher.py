@@ -3,10 +3,14 @@ MQTT Publisher - Envoie des demandes de prédictions batch via MQTT
 TeleConnect Afrique
 """
 
+import os
 import paho.mqtt.client as mqtt
 import json
 import time
 import sqlite3 # NOUVEAU: Importation de la bibliothèque SQLite
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configuration MQTT
 MQTT_BROKER = "localhost"  # Adresse du broker Mosquitto
@@ -14,9 +18,9 @@ MQTT_PORT = 1883
 MQTT_TOPIC_REQUEST = "teleconnect/churn/prediction/request"
 MQTT_TOPIC_RESPONSE = "teleconnect/churn/prediction/response"
 
-# === Vos identifiants MQTT ===
-MQTT_USER = "user" 
-MQTT_PASSWORD = "morose20" 
+# === Identifiants MQTT (définis dans .env, jamais commités) ===
+MQTT_USER = os.environ["MQTT_USER"]
+MQTT_PASSWORD = os.environ["MQTT_PASSWORD"]
 # ===============================
 
 # Configuration SQLite

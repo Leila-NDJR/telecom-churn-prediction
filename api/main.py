@@ -112,16 +112,30 @@ try:
     
     with open(os.path.join(DATA_DIR, 'feature_names.json'), 'r') as f:
         feature_names = json.load(f)
-    
-    # Récupérer le seuil optimisé du metadata, sinon utiliser 0.35 (valeur optimale typique)
-    BEST_THRESHOLD = metadata.get('best_threshold', 0.35)
-    
-    # IMPORTANT: Si tu connais ton seuil optimal du notebook 03, force-le ici:
-    # BEST_THRESHOLD = 0.35  # ← Décommente et remplace par ton seuil réel
-    
+
+    # Récupérer le seuil de décision.
+    # PRIORITÉ : le seuil business réellement optimisé (analyse ROI du Notebook 04,
+    # data/processed/business_analysis.json -> "optimal_threshold"), qui maximise le
+    # revenu net attendu (coût faux positifs + coût faux négatifs + coût des actions
+    # de rétention vs revenu sauvé). C'est ce calcul, et non un seuil par défaut
+    # arbitraire (0.5), qui doit piloter la décision en production.
+    # Repli : model_metadata.json -> "best_threshold", puis 0.35 si rien n'est disponible.
+    business_analysis_path = os.path.join(DATA_DIR, 'business_analysis.json')
+    business_analysis = {}
+    if os.path.exists(business_analysis_path):
+        with open(business_analysis_path, 'r') as f:
+            business_analysis = json.load(f)
+
+    if 'optimal_threshold' in business_analysis:
+        BEST_THRESHOLD = business_analysis['optimal_threshold']
+        THRESHOLD_SOURCE = 'business_analysis.json (optimisation ROI)'
+    else:
+        BEST_THRESHOLD = metadata.get('best_threshold', 0.35)
+        THRESHOLD_SOURCE = 'model_metadata.json (repli)'
+
     print("✅ Modèle chargé avec succès !")
     print(f"   Modèle: {metadata['best_model']}")
-    print(f"   Seuil optimal: {BEST_THRESHOLD}")
+    print(f"   Seuil optimal: {BEST_THRESHOLD} (source: {THRESHOLD_SOURCE})")
     print(f"   Features: {len(feature_names)}")
     
 except Exception as e:
@@ -138,8 +152,9 @@ except Exception as e:
 def post_process(probability: float) -> tuple[str, str, float]:
     """
     Applique le seuil optimal pour la prédiction et détermine le niveau de risque.
-    
-    BEST_THRESHOLD est défini à 0.5 dans votre code initial.
+
+    BEST_THRESHOLD est chargé au démarrage depuis business_analysis.json
+    (seuil optimisé business, ~0.30), voir bloc de chargement plus haut.
     """
     
     # 1. Prédiction binaire
@@ -168,32 +183,77 @@ def post_process(probability: float) -> tuple[str, str, float]:
     return prediction, risk_level, confidence
 
 
-def get_recommendations(probability: float, customer_data: dict) -> list[str]:
-    """
-    Génère des recommandations personnalisées basées sur la probabilité et les features client.
-    """
-    recommendations = []
-    
-    # Recommandations spécifiques si risque élevé
-    if probability >= 0.75:
-        recommendations.append("Alerte: Client à très haut risque. Contact immédiat du service Rétention.")
-    elif probability >= BEST_THRESHOLD:
-        recommendations.append("Client à risque modéré. Lancer une campagne de rétention automatisée (email/SMS).")
+# ----------------------------------------------------------------------------
+# Valeur client (CLV proxy) et score de priorisation risque × valeur
+# ----------------------------------------------------------------------------
+# Durée de vie restante attendue (en mois), estimée à partir de l'ancienneté
+# (tenure) MOYENNE RÉELLEMENT OBSERVÉE chez les clients NON churnés du dataset
+# d'entraînement (data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv), regroupés par
+# type de contrat. Calcul (pandas) :
+#   df[df.Churn=='No'].groupby('Contract').tenure.mean()
+#     Month-to-month -> 21.03 mois (n=2220)
+#     One year       -> 41.67 mois (n=1307)
+#     Two year       -> 56.60 mois (n=1647)
+# Interprétation : la durée de vie restante d'un client = la durée de vie
+# "typique" d'un client fidèle du même type de contrat, moins l'ancienneté déjà
+# écoulée, avec un plancher pour ne pas sous-évaluer un client déjà très
+# ancien (toujours actif -> encore de la valeur future).
+EXPECTED_TENURE_MONTHS_BY_CONTRACT = {
+    "Month-to-month": 21.03,
+    "One year": 41.67,
+    "Two year": 56.60,
+}
+MIN_REMAINING_TENURE_MONTHS = 6.0
+# Horizon par défaut si le type de contrat est absent/inconnu : faute de
+# meilleure information dans les données, on retombe sur 12 mois (proxy simple
+# "MonthlyCharges x 12").
+DEFAULT_REMAINING_TENURE_MONTHS = 12.0
 
-    # Recommandations basées sur les features (Exemples)
-    if customer_data.get('Contract') == 'Month-to-month' and probability >= BEST_THRESHOLD:
-        recommendations.append("Proposer une offre de contrat 1 an ou 2 ans avec réduction pour stabiliser.")
-    
-    if customer_data.get('InternetService') == 'Fiber optic' and customer_data.get('MonthlyCharges', 0) > 90 and probability >= BEST_THRESHOLD:
-        recommendations.append("Vérifier la satisfaction des services fibre et envisager un rabais ou un service premium gratuit.")
-        
-    if customer_data.get('TechSupport') == 'No' and probability >= 0.6:
-        recommendations.append("Offrir un mois de support technique gratuit pour améliorer l'expérience client.")
+# Segment "haute valeur" : même seuil de facture mensuelle que celui déjà
+# utilisé pour l'alerte fibre ci-dessous, réutilisé pour rester cohérent.
+HIGH_VALUE_MONTHLY_CHARGES = 90.0
 
-    if not recommendations:
-        recommendations.append("Client stable. Suivi standard.")
-        
-    return recommendations
+
+def estimate_remaining_tenure_months(contract: Optional[str], tenure) -> float:
+    """Estime la durée de vie restante (mois) d'un client à partir de son
+    contrat et de son ancienneté actuelle (voir constantes ci-dessus)."""
+    try:
+        tenure = float(tenure)
+    except (TypeError, ValueError):
+        tenure = 0.0
+
+    expected_lifetime = EXPECTED_TENURE_MONTHS_BY_CONTRACT.get(contract)
+    if expected_lifetime is None:
+        return DEFAULT_REMAINING_TENURE_MONTHS
+
+    return max(expected_lifetime - tenure, MIN_REMAINING_TENURE_MONTHS)
+
+
+def calculate_clv_proxy(customer_data: dict) -> float:
+    """CLV proxy = MonthlyCharges x durée de vie restante estimée (mois).
+    C'est une approximation simple de la valeur future du client, utilisée
+    uniquement pour prioriser les contacts de rétention (pas une vraie
+    valorisation financière du client)."""
+    monthly_charges = customer_data.get('MonthlyCharges', 0) or 0
+    try:
+        monthly_charges = float(monthly_charges)
+    except (TypeError, ValueError):
+        monthly_charges = 0.0
+
+    remaining_months = estimate_remaining_tenure_months(
+        customer_data.get('Contract'), customer_data.get('tenure', 0)
+    )
+    return round(monthly_charges * remaining_months, 2)
+
+
+def calculate_priority_score(probability: float, clv_proxy: float) -> float:
+    """Score de priorisation = probabilité de churn x valeur client (CLV proxy).
+    Sert à classer les clients à contacter en premier quand le budget de
+    rétention (temps agent, coût des offres) est limité : à risque égal, on
+    traite d'abord les clients à forte valeur ; à valeur égale, on traite
+    d'abord les clients les plus à risque."""
+    return round(float(probability) * clv_proxy, 2)
+
 
 # ============================================================================
 # FIN DES FONCTIONS SUPPLÉMENTAIRES
@@ -274,16 +334,26 @@ class CustomerData(BaseModel):
     }
 
 
+class Recommendation(BaseModel):
+    """Recommandation actionnable pour l'équipe terrain"""
+    rule: str = Field(..., description="Règle métier déclenchée")
+    priority: int = Field(..., description="Ordre de priorité de l'action pour ce client (1 = plus urgent)")
+    channel: str = Field(..., description="Canal de contact suggéré (SMS, Email, Appel agent rétention, ...)")
+    offer: str = Field(..., description="Offre indicative chiffrée (remise en % et FCFA/mois estimés)")
+
+
 class PredictionResponse(BaseModel):
     """Réponse de prédiction"""
     customerID: str = Field(..., description="Identifiant unique du client")
-    
+
     churn_probability: float = Field(..., description="Probabilité de churn (0-1)")
     churn_prediction: str = Field(..., description="Prédiction: Churn ou No Churn")
     risk_level: str = Field(..., description="Niveau de risque: Low, Medium, High")
     confidence: float = Field(..., description="Confiance de la prédiction (0-1)")
     threshold_used: float = Field(..., description="Seuil de décision utilisé")
-    recommendations: List[str] = Field(..., description="Recommandations d'action")
+    clv_proxy: float = Field(..., description="Valeur client estimée en FCFA (CLV proxy) = MonthlyCharges x durée de vie restante estimée")
+    priority_score: float = Field(..., description="Score de priorisation = churn_probability x clv_proxy. Classe les clients à contacter en premier avec un budget de rétention limité")
+    recommendations: List[Recommendation] = Field(..., description="Recommandations d'action")
 
 
 class BatchPredictionRequest(BaseModel):
@@ -381,36 +451,106 @@ def preprocess_customer(customer: CustomerData) -> pd.DataFrame:
 
 
 # ============================================================================
-# FONCTION DE RECOMMANDATIONS (Correction de l'accès aux données)
+# FONCTION DE RECOMMANDATIONS (actionnable : canal, priorité, offre chiffrée)
 # ============================================================================
 
-def get_recommendations(probability: float, customer_data: dict) -> list[str]:
+def get_recommendations(probability: float, customer_data: dict) -> List[dict]:
     """
-    Génère des recommandations personnalisées basées sur la probabilité et les features client.
-    Note: Utilise .get('key') pour accéder aux éléments du dictionnaire customer_data.
+    Génère des recommandations personnalisées et actionnables pour l'équipe
+    terrain. Chaque recommandation précise :
+      - rule     : la règle métier déclenchée
+      - priority : ordre de priorité de l'action pour CE client (1 = plus urgent)
+      - channel  : canal de contact suggéré (SMS pour un contrat mensuel afin
+                   de toucher vite un client peu engagé, appel agent dédié
+                   pour les clients à haute valeur qui justifient un contact
+                   humain, email/SMS pour le reste)
+      - offer    : offre indicative chiffrée (remise en % et FCFA/mois estimés
+                   à partir de la facture mensuelle réelle du client)
+
+    Le classement global "qui contacter en premier" (au-delà d'un seul client)
+    doit se faire sur le champ `priority_score` de la réponse API (risque x
+    valeur client), pas sur ces priorités locales par règle.
+
+    Note: utilise .get('key') pour accéder aux éléments du dictionnaire
+    customer_data (qui peut être un customer.model_dump() ou une ligne de
+    DataFrame convertie en dict).
     """
     recommendations = []
-    
-    # Recommandations spécifiques si risque élevé
-    if probability >= 0.75:
-        recommendations.append("Alerte: Client à très haut risque. Contact immédiat du service Rétention.")
-    elif probability >= BEST_THRESHOLD:
-        recommendations.append("Client à risque modéré. Lancer une campagne de rétention automatisée (email/SMS).")
 
-    # Recommandations basées sur les features (Exemples)
-    # 🚨 L'accès doit se faire via .get('key') ou ['key']
-    if customer_data.get('Contract') == 'Month-to-month' and probability >= BEST_THRESHOLD:
-        recommendations.append("Proposer une offre de contrat 1 an ou 2 ans avec réduction pour stabiliser.")
-    
-    if customer_data.get('InternetService') == 'Fiber optic' and customer_data.get('MonthlyCharges', 0) > 90 and probability >= BEST_THRESHOLD:
-        recommendations.append("Vérifier la satisfaction des services fibre et envisager un rabais ou un service premium gratuit.")
-        
+    contract = customer_data.get('Contract')
+    monthly_charges = customer_data.get('MonthlyCharges', 0) or 0
+    try:
+        monthly_charges = float(monthly_charges)
+    except (TypeError, ValueError):
+        monthly_charges = 0.0
+    high_value = monthly_charges > HIGH_VALUE_MONTHLY_CHARGES
+
+    # Règle 1 : risque très élevé -> contact immédiat, canal humain pour les
+    # clients à forte valeur, centre d'appels standard sinon.
+    if probability >= 0.75:
+        recommendations.append({
+            "rule": "Risque très élevé de churn",
+            "priority": 1,
+            "channel": "Appel agent rétention dédié" if high_value else "Appel centre d'appels",
+            "offer": (
+                f"Remise de 20% sur 3 mois (~{round(monthly_charges * 0.20, 2)} FCFA/mois)"
+                + (" + 1 mois de service premium offert" if high_value else "")
+            ),
+        })
+    # Règle 2 : risque modéré -> campagne de rétention.
+    elif probability >= BEST_THRESHOLD:
+        recommendations.append({
+            "rule": "Risque modéré de churn",
+            "priority": 2,
+            "channel": (
+                "Appel agent rétention" if high_value
+                else ("SMS" if contract == "Month-to-month" else "Email")
+            ),
+            "offer": f"Remise de 10% sur 2 mois (~{round(monthly_charges * 0.10, 2)} FCFA/mois)",
+        })
+
+    # Règle 3 : contrat mensuel à risque -> proposer un engagement plus long
+    # (le SMS est privilégié car c'est un client peu engagé, à toucher vite).
+    if contract == 'Month-to-month' and probability >= BEST_THRESHOLD:
+        recommendations.append({
+            "rule": "Contrat mensuel instable",
+            "priority": 1 if high_value else 3,
+            "channel": "SMS",
+            "offer": (
+                "Remise de 15% sur 12 mois en cas de passage à un contrat 1 an, "
+                "ou 25% sur 24 mois pour un contrat 2 ans "
+                f"(~{round(monthly_charges * 0.15, 2)} FCFA/mois d'économie sur l'offre 1 an)"
+            ),
+        })
+
+    # Règle 4 : fibre chère -> vérifier la satisfaction du service, contact humain.
+    if contract is not None and customer_data.get('InternetService') == 'Fiber optic' \
+            and monthly_charges > HIGH_VALUE_MONTHLY_CHARGES and probability >= BEST_THRESHOLD:
+        recommendations.append({
+            "rule": "Client fibre à forte facture",
+            "priority": 1,
+            "channel": "Appel agent rétention",
+            "offer": f"Rabais de 15% sur la facture fibre (~{round(monthly_charges * 0.15, 2)} FCFA/mois) ou upgrade gratuit du service",
+        })
+
+    # Règle 5 : pas de support technique -> geste de service, canal léger.
     if customer_data.get('TechSupport') == 'No' and probability >= 0.6:
-        recommendations.append("Offrir un mois de support technique gratuit pour améliorer l'expérience client.")
+        recommendations.append({
+            "rule": "Absence de support technique",
+            "priority": 3,
+            "channel": "Email",
+            "offer": "1 mois de support technique offert",
+        })
 
     if not recommendations:
-        recommendations.append("Client stable. Suivi standard.")
-        
+        recommendations.append({
+            "rule": "Client stable",
+            "priority": 5,
+            "channel": "Aucun contact proactif",
+            "offer": "Suivi standard, pas d'offre",
+        })
+
+    recommendations.sort(key=lambda r: r["priority"])
     return recommendations
 
 # ============================================================================
@@ -475,31 +615,32 @@ def predict_churn(customer: CustomerData):
     try:
         # Prétraitement
         X = preprocess_customer(customer)
-        
+
         # Prédiction
         probability = model.predict_proba(X)[0][1]
-        prediction = "Churn" if probability >= BEST_THRESHOLD else "No Churn"
-        
-        # Niveau de risque
-        if probability >= 0.7:
-            risk_level = "High"
-        elif probability >= 0.4:
-            risk_level = "Medium"
-        else:
-            risk_level = "Low"
-        
-        # Confiance
-        confidence = max(probability, 1 - probability)
-        
-        # Recommandations
-        recommendations = get_recommendations(probability, customer)
-        
+
+        # Post-traitement (prédiction + niveau de risque), cohérent avec /predict_batch :
+        # utilise le même BEST_THRESHOLD partout, au lieu d'un seuil de risque
+        # (0.7/0.4) déconnecté du seuil de décision réellement appliqué.
+        prediction, risk_level, confidence = post_process(probability)
+
+        # Valeur client (CLV proxy) et score de priorisation risque x valeur
+        customer_dict = customer.model_dump()
+        clv_proxy = calculate_clv_proxy(customer_dict)
+        priority_score = calculate_priority_score(probability, clv_proxy)
+
+        # Recommandations (nécessite un dict, pas l'objet pydantic)
+        recommendations = get_recommendations(probability, customer_dict)
+
         return PredictionResponse(
+            customerID=customer.customerID or "N/A",
             churn_probability=round(float(probability), 4),
             churn_prediction=prediction,
             risk_level=risk_level,
             confidence=round(float(confidence), 4),
             threshold_used=BEST_THRESHOLD,
+            clv_proxy=clv_proxy,
+            priority_score=priority_score,
             recommendations=recommendations
         )
         
@@ -571,19 +712,28 @@ def predict_batch(batch: BatchPredictionRequest):
                 if risk_level == "High":
                     high_risk_count += 1
             
-            # Les recommandations nécessitent toujours les données client brutes
-            recommendations = get_recommendations(probability, customers_df.iloc[i].to_dict())
-            
+            # Les recommandations et le CLV nécessitent toujours les données client brutes
+            customer_dict = customers_df.iloc[i].to_dict()
+            recommendations = get_recommendations(probability, customer_dict)
+            clv_proxy = calculate_clv_proxy(customer_dict)
+            priority_score = calculate_priority_score(probability, clv_proxy)
+
             predictions.append(PredictionResponse(
-                customerID=customer_id, 
+                customerID=customer_id,
                 churn_probability=round(float(probability), 4),
                 churn_prediction=prediction,
                 risk_level=risk_level,
                 confidence=round(float(confidence), 4),
                 threshold_used=BEST_THRESHOLD,
+                clv_proxy=clv_proxy,
+                priority_score=priority_score,
                 recommendations=recommendations
             ))
-        
+
+        # Trier par priority_score décroissant : avec un budget de rétention
+        # limité, l'équipe terrain traite la liste dans l'ordre renvoyé.
+        predictions.sort(key=lambda p: p.priority_score, reverse=True)
+
         # Résumé
         total = len(predictions)
         summary = {
@@ -592,9 +742,11 @@ def predict_batch(batch: BatchPredictionRequest):
             "churn_rate": round(churn_count / total, 4) if total > 0 else 0,
             "high_risk_customers": high_risk_count,
             "medium_risk_customers": sum(1 for p in predictions if p.risk_level == "Medium"),
-            "low_risk_customers": sum(1 for p in predictions if p.risk_level == "Low")
+            "low_risk_customers": sum(1 for p in predictions if p.risk_level == "Low"),
+            "avg_priority_score": round(sum(p.priority_score for p in predictions) / total, 2) if total > 0 else 0,
+            "top_priority_customer_ids": [p.customerID for p in predictions[:5]]
         }
-        
+
         return BatchPredictionResponse(
             predictions=predictions,
             summary=summary

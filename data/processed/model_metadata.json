@@ -1,6 +1,6 @@
 {
     "best_model": "XGBoost",
-    "best_threshold": 0.5,
+    "best_threshold": 0.3,
     "feature_names": [
         "gender",
         "SeniorCitizen",
