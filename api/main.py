@@ -65,13 +65,18 @@ def create_custom_features(df):
     ).astype(int)
     
     # 5. Feature: TenureCategory (Classification de l'ancienneté pour OHE)
-    bins = [0, 12, 24, 48, 72]  # <1an, 1-2ans, 2-4ans, 4+ans
+    # Borne supérieure ouverte (np.inf) : le jeu d'entraînement ne dépasse pas
+    # 72 mois, mais un vrai client peut avoir une ancienneté bien plus grande
+    # (ex. 40 ans = 480 mois) - avec une dernière borne fermée à 72, un tel
+    # client ne tombait dans AUCUNE catégorie (NaN), ce qui le faisait
+    # silencieusement traiter comme "< 1 an" une fois encodé (bug corrigé ici).
+    bins = [0, 12, 24, 48, np.inf]  # <1an, 1-2ans, 2-4ans, 4+ans (sans plafond)
     labels = ['< 1 an', '1-2 ans', '2-4 ans', '4+ ans']
     df['TenureCategory'] = pd.cut(
-        df['tenure'], 
-        bins=bins, 
-        labels=labels, 
-        right=False, 
+        df['tenure'],
+        bins=bins,
+        labels=labels,
+        right=False,
         include_lowest=True
     ).astype(str)
 
@@ -387,10 +392,12 @@ def preprocess_customer(customer: CustomerData) -> pd.DataFrame:
         axis=1
     )
     
-    # 2. TenureCategory
+    # 2. TenureCategory (borne supérieure ouverte, voir create_custom_features
+    # ci-dessus pour le détail du bug corrigé - un client à forte ancienneté
+    # doit rester classé "4+ ans", jamais NaN)
     df['TenureCategory'] = pd.cut(
         df['tenure'],
-        bins=[0, 12, 24, 48, 72],
+        bins=[0, 12, 24, 48, np.inf],
         labels=['0-1 an', '1-2 ans', '2-4 ans', '4+ ans']
     )
     

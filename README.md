@@ -1,9 +1,9 @@
-# 📊 Système de Prédiction du Churn Client - TeleConnect Afrique
+# Système de Prédiction du Churn Client - TeleConnect Afrique
 
-**Auteur : K. Jessy**
-Projet End-to-End Data Science | M1 Data Science | Date : Novembre 2025
+**Auteur : K. Jessy Leila**
+Projet End-to-End Data Science | M1 Data Science | Date : Novembre 2025 (Révisé en 2026)
 
-📝 Description du Projet
+Description du Projet
 Ce projet est une solution complète (de la donnée brute à la visualisation) visant à prédire le désabonnement (churn) des clients de l'opérateur TeleConnect Afrique.
 
 Face à un taux de churn de 27%, ce système permet de :
@@ -16,7 +16,7 @@ Face à un taux de churn de 27%, ce système permet de :
 
 L'architecture repose sur un modèle XGBoost exposé via une API FastAPI, communiquant via un protocole de messagerie asynchrone (MQTT) et monitoré via Streamlit.
 
-📂 Structure du Projet
+Structure du Projet
 Voici l'organisation des fichiers du projet :
 
 Bash
@@ -54,7 +54,7 @@ telecom-churn-prediction/
 └── README.md                  # Documentation officielle
 
 
-⚙️ Prérequis Techniques
+# Prérequis Techniques
 Avant de commencer, assurez-vous que votre machine dispose de :
 
 Python 3.10+ installé.
@@ -64,19 +64,19 @@ Eclipse Mosquitto (Broker MQTT) installé et démarré.
 Windows : Télécharger sur mosquitto.org. Une fois installé, lancez le service (Services Windows -> Mosquitto Broker) ou exécutez mosquitto -v dans un terminal.
 
 
-🚀 Guide d'Installation (Pas à Pas)
+# Guide d'Installation (Pas à Pas)
 
 1. Cloner et configurer l'environnement (git clone https://github.com/Leila-NDJR/telecom-churn-prediction.git )
 
 Ouvrez votre terminal (PowerShell ou Bash) à la racine du projet :
 
-# 1. Créer un environnement virtuel pour isoler le projet
+## 1. Créer un environnement virtuel pour isoler le projet
 python -m venv venv
 
-# 2. Activer l'environnement
-# Sur Windows :
+## 2. Activer l'environnement
+### Sur Windows :
 venv\Scripts\activate
-# Sur Mac/Linux :
+### Sur Mac/Linux :
 source venv/bin/activate
 
 # 3. Installer les dépendances
@@ -87,12 +87,12 @@ Nous devons créer la base de données locale SQLite et y injecter des clients p
 
 Note : Si un fichier customers.db existe déjà et que vous voulez repartir de zéro, supprimez-le avant de lancer ces commandes.
 
-# Étape A : Créer la structure et les 10 premiers clients
+## Étape A : Créer la structure et les 10 premiers clients
 python customers_db.py
 
-# Étape B : Ajouter 30 clients supplémentaires pour le test batch
+## Étape B : Ajouter 30 clients supplémentaires pour le test batch
 python add_new_customers_db.py
-▶️ Guide d'Exécution (Démarrage du Système)
+Guide d'Exécution (Démarrage du Système)
 Pour voir le projet fonctionner, vous devez ouvrir 4 terminaux différents (avec l'environnement virtuel activé dans chacun) et lancer les services dans cet ordre précis.
 
 Terminal 1 : L'API de Prédiction (Le Cerveau)
@@ -109,7 +109,7 @@ Ce service écoute les demandes, interroge l'API et sauvegarde les résultats.
 Bash
 
 python monitoring/mqtt_suscriber.py
-Attendre le message : ✅ Connecté au broker MQTT
+Attendre le message : Connecté au broker MQTT
 
 Terminal 3 : Le Dashboard (La Vue)
 L'interface pour visualiser les KPIs et les alertes churn.
@@ -125,7 +125,8 @@ Ce script simule l'envoi d'un lot de clients (batch) à analyser.
 Bash
 
 python monitoring/mqtt_publisher.py
-✅ Vérification du Bon Fonctionnement
+
+# Vérification du Bon Fonctionnement
 Si tout s'est bien passé :
 
 Dans le Terminal 4 (Publisher), vous voyez : 📤 Envoi de 40 clients...
@@ -138,7 +139,7 @@ Statistiques du Dernier Batch : 40 clients.
 
 Tableau détaillé : La liste des clients avec leur ID, leur probabilité de churn et le niveau de risque.
 
-# 📊 Performances et Métriques
+# Performances et Métriques
 
 Le modèle a été évalué sur un jeu de test indépendant.
 
@@ -153,7 +154,7 @@ Recall (Détection des partants) : 80.7% au seuil générique 0.50, **92.5% au s
 
 Latence API (Batch 30 clients) : ~2600ms.
 
-## ✅ Résultats clés
+## Résultats clés
 
 Le seuil de décision de l'API était figé à une valeur générique (0.50) sans jamais lire l'analyse ROI déjà calculée dans le Notebook 04. Après correction :
 
@@ -163,7 +164,7 @@ Le seuil de décision de l'API était figé à une valeur générique (0.50) san
 - **Score de priorisation `priority_score` = risque × valeur client** (`churn_probability × clv_proxy`), exposé dans `/predict` et `/predict_batch`, pour cibler en premier les clients à la fois à risque ET à forte valeur avec un budget de rétention limité.
 - **Recommandations enfin actionnables** : une seule fonction `get_recommendations()` (au lieu de deux copies dupliquées), avec canal de contact adapté au profil et offre chiffrée réelle.
 
-## 🎯 Recommandations
+## Recommandations
 
 À l'attention d'une direction rétention / CRM souhaitant s'appuyer sur ce système :
 
